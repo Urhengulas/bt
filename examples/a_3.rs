@@ -8,7 +8,6 @@ use std::{
 
 static MY_ALLOC: MyAllocator = MyAllocator;
 
-#[derive(Clone, Copy)]
 struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
@@ -27,7 +26,7 @@ unsafe impl Allocator for MyAllocator {
 }
 
 fn main() {
-    let mut a = Vec::<i32, _>::new_in(MY_ALLOC);
+    let mut a = Vec::<i32, _>::new_in(&MY_ALLOC);
     dbg!(&a, a.as_ptr());
 
     for i in 0..5 {

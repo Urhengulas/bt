@@ -8,7 +8,6 @@ use std::{
 static MY_ALLOC: MyAllocator = MyAllocator;
 static mut GLOBAL_PTR: GlobalPtr = GlobalPtr::new();
 
-#[derive(Clone, Copy)]
 struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
@@ -42,7 +41,7 @@ impl GlobalPtr {
 fn main() {
     // allocate vector and push some elements, all looks nice so far
     // NOTE: uses with_capacity to avoid reallocation
-    let mut a = Vec::with_capacity_in(10, MY_ALLOC);
+    let mut a = Vec::with_capacity_in(10, &MY_ALLOC);
     for i in 0..10 {
         a.push(i);
     }
@@ -51,7 +50,7 @@ fn main() {
 
     // allocate another vector and push some elements
     // this overwrites the earlier vector
-    let mut b = Vec::with_capacity_in(5, MY_ALLOC);
+    let mut b = Vec::with_capacity_in(5, &MY_ALLOC);
     for i in 0..5 {
         b.push(i * 10);
     }
@@ -59,7 +58,7 @@ fn main() {
     separator();
 
     // allocate another vector, this time push more elements than we have capacity to trigger reallocation
-    let mut c = Vec::with_capacity_in(5, MY_ALLOC);
+    let mut c = Vec::with_capacity_in(5, &MY_ALLOC);
     for i in 0..10 {
         c.push(i * 10);
     }
