@@ -21,6 +21,7 @@ fn main() {
     }
 }
 
+#[derive(Debug)]
 pub struct BumpAllocator {
     heap_start: usize,
     heap_end: usize,
@@ -48,10 +49,7 @@ impl BumpAllocator {
         self.heap_end = heap_start + heap_size;
         self.next = heap_start;
 
-        println!(
-            "init: start={:#x}, end={:#x}",
-            self.heap_start, self.heap_end
-        );
+        dbg!(self);
     }
 }
 
@@ -92,6 +90,7 @@ unsafe impl Allocator for Locked<BumpAllocator> {
                 slice::from_raw_parts_mut(alloc_start as *mut u8, layout.size()) as *mut _
             };
             println!("allocate:   ptr={ptr:?}, layout={layout:?}");
+            dbg!(&bump);
             Ok(NonNull::new(ptr).unwrap())
         }
     }
