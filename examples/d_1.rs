@@ -2,9 +2,9 @@ const KB: usize = 1024;
 
 fn main() {
     let mut a = Vec::new();
-    for i in 0..u128::MAX {
+    loop {
         push_one_mb(&mut a);
-        println!("{i} MB")
+        println!("{} MB", a.len() / 1024)
     }
 }
 
