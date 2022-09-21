@@ -41,30 +41,30 @@ impl GlobalPtr {
 fn main() {
     // allocate vector and push some elements, all looks nice so far
     // NOTE: uses with_capacity to avoid reallocation
-    let mut a = Vec::with_capacity_in(10, &MY_ALLOC);
-    for i in 0..10 {
+    let mut a = Vec::with_capacity_in(6, &MY_ALLOC);
+    for i in 0..6 {
         a.push(i);
     }
-    dbg!(&a, a.as_ptr());
+    println!("a: {a:?}");
     separator();
 
     // allocate another vector and push some elements
     // this overwrites the earlier vector
-    let mut b = Vec::with_capacity_in(5, &MY_ALLOC);
-    for i in 0..5 {
+    let mut b = Vec::with_capacity_in(3, &MY_ALLOC);
+    for i in 0..3 {
         b.push(i * 10);
     }
-    dbg!(&a, a.as_ptr(), &b, b.as_ptr());
+    assert_eq!(a.as_ptr(), b.as_ptr());
+    println!("a: {a:?}\nb: {b:?}");
     separator();
 
-    // allocate another vector, this time push more elements than we have capacity to trigger reallocation
-    let mut c = Vec::with_capacity_in(5, &MY_ALLOC);
-    for i in 0..10 {
-        c.push(i * 10);
+    // push more elements in second vector to force reallocation
+    for i in 0..3 {
+        b.push(i * 100);
     }
-    dbg!(&a, a.as_ptr(), &b, b.as_ptr(), &c, c.as_ptr());
+    println!("a: {a:?}\nb: {b:?}");
 }
 
 fn separator() {
-    println!("{}", "-".repeat(50));
+    println!("{}", "-".repeat(70));
 }
