@@ -15,7 +15,7 @@ unsafe impl Allocator for MyAllocator {
         unsafe {
             let ptr = slice::from_raw_parts_mut(ptr::null_mut(), layout.size()) as *mut _;
             let non_null = NonNull::new_unchecked(ptr);
-            println!("Allocated!");
+            dbg!(layout, non_null);
             Ok(non_null)
         }
     }
