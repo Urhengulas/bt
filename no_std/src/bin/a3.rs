@@ -5,18 +5,21 @@
 
 extern crate alloc;
 
-use core::ptr::NonNull;
-
 use alloc::{
     alloc::{AllocError, Allocator, Layout},
     vec::Vec,
 };
+use core::{
+    ptr::{self, NonNull},
+    slice,
+};
+
+use defmt::{dbg, println};
 use linked_list_allocator::LockedHeap;
-use no_std_krate as _; // global logger + panicking-behavior + memory layout
+use no_std as _; // global logger + panicking-behavior + memory layout
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
-static mut GLOBAL_PTR: GlobalPtr = GlobalPtr::new();
 static mut HEAP: [u8; 1024] = [0; 1024];
 static MY_ALLOC: MyAllocator = MyAllocator;
 
@@ -24,30 +27,16 @@ struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        Ok(unsafe { GLOBAL_PTR.get(layout) })
+        unsafe {
+            let ptr = slice::from_raw_parts_mut(ptr::null_mut(), layout.size()) as *mut _;
+            let non_null = NonNull::new_unchecked(ptr);
+            println!("Allocated!");
+            Ok(non_null)
+        }
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        // if deallocation is omitted the example just runs through without any complaints
         ALLOCATOR.deallocate(ptr, layout)
-    }
-}
-
-struct GlobalPtr {
-    ptr: Option<NonNull<[u8]>>,
-}
-
-impl GlobalPtr {
-    const fn new() -> Self {
-        Self { ptr: None }
-    }
-
-    fn get(&mut self, layout: Layout) -> NonNull<[u8]> {
-        if self.ptr.is_none() {
-            let ptr = ALLOCATOR.allocate(layout).unwrap();
-            self.ptr = Some(ptr);
-        }
-        self.ptr.unwrap()
     }
 }
 
@@ -55,16 +44,15 @@ impl GlobalPtr {
 fn main() -> ! {
     init_heap();
 
-    let mut a = Vec::with_capacity_in(5, &MY_ALLOC);
-    defmt::dbg!(a.as_slice());
-    for i in 0..20 {
+    let mut a = Vec::<i32, _>::new_in(&MY_ALLOC);
+    dbg!(a.as_slice(), a.as_ptr());
+
+    for i in 0..5 {
         a.push(i);
-        defmt::dbg!(a.as_slice());
     }
+    dbg!(a.as_slice(), a.as_ptr());
 
-    defmt::println!("{}", a.as_slice());
-
-    no_std_krate::exit()
+    no_std::exit()
 }
 
 pub fn init_heap() {
@@ -72,5 +60,6 @@ pub fn init_heap() {
         let heap_start = HEAP.as_mut_ptr();
         let heap_size = HEAP.len();
         ALLOCATOR.lock().init(heap_start, heap_size);
-    }
+    };
+    println!("Initialized heap!");
 }

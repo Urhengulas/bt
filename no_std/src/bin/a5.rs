@@ -1,58 +1,66 @@
 #![feature(allocator_api)]
 #![feature(default_alloc_error_handler)]
+#![feature(ptr_metadata)]
 #![no_main]
 #![no_std]
 
 extern crate alloc;
 
 use alloc::{
-    alloc::{AllocError, Allocator, Layout},
+    alloc::{AllocError, Allocator, Global, Layout},
     vec::Vec,
 };
 use core::{
     ptr::{self, NonNull},
     slice,
+    sync::atomic::AtomicU32,
 };
 
 use defmt::{dbg, println};
 use linked_list_allocator::LockedHeap;
-use no_std_krate as _; // global logger + panicking-behavior + memory layout
+use no_std as _; // global logger + panicking-behavior + memory layout
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 static mut HEAP: [u8; 1024] = [0; 1024];
 static MY_ALLOC: MyAllocator = MyAllocator;
+static mut COUNTER: AtomicU32 = AtomicU32::new(0);
 
 struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate(&self, _layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         unsafe {
-            let ptr = slice::from_raw_parts_mut(ptr::null_mut(), layout.size()) as *mut _;
-            let non_null = NonNull::new_unchecked(ptr);
-            println!("Allocated!");
-            Ok(non_null)
+            let b = COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+            let a = slice::from_raw_parts_mut((0x10 + b * 20) as *mut u8, 10) as *mut _;
+            Ok(NonNull::new(a).unwrap())
         }
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        ALLOCATOR.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
     init_heap();
+    notmain();
+    no_std::exit()
+}
 
+fn notmain() {
     let mut a = Vec::<i32, _>::new_in(&MY_ALLOC);
-    dbg!(a.as_slice(), a.as_ptr());
-
     for i in 0..5 {
         a.push(i);
     }
-    dbg!(a.as_slice(), a.as_ptr());
+    dbg!(&a, a.as_ptr());
 
-    no_std_krate::exit()
+    let mut b = Vec::<i32, _>::new_in(&MY_ALLOC);
+    for i in 0..5 {
+        b.push(i * 2);
+    }
+    dbg!(&b, b.as_ptr());
 }
 
 pub fn init_heap() {

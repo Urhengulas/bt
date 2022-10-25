@@ -17,7 +17,7 @@ use core::{
 };
 
 use defmt::{dbg, println};
-use no_std_krate as _; // global logger + panicking-behavior + memory layout
+use no_std as _; // global logger + panicking-behavior + memory layout
 
 static mut MEMORY: [u8; 300] = [0; 300];
 #[global_allocator]
@@ -27,7 +27,7 @@ static ALLOC: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 fn main() -> ! {
     init_heap();
     notmain();
-    no_std_krate::exit()
+    no_std::exit()
 }
 
 fn notmain() {
