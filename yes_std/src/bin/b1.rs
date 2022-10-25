@@ -7,19 +7,19 @@ static mut HEAP: [u8; 64] = [0; 64];
 
 fn main() {
     init_heap();
-    dbg!(ALLOCATOR.lock().free());
+    assert_eq!(ALLOCATOR.lock().free(), 64);
 
     // allocate four small objects
     let _a = Box::try_new_in([5_u8; 16], &ALLOCATOR).unwrap();
     let _b = Box::try_new_in([5_u8; 16], &ALLOCATOR).unwrap();
     let _c = Box::try_new_in([5_u8; 16], &ALLOCATOR).unwrap();
     let _d = Box::try_new_in([5_u8; 16], &ALLOCATOR).unwrap();
-    dbg!(ALLOCATOR.lock().free());
+    assert_eq!(ALLOCATOR.lock().free(), 0);
 
     // deallocate two small objects; they are _not_ consecutive
     drop(_a);
     drop(_c);
-    dbg!(ALLOCATOR.lock().free());
+    assert_eq!(ALLOCATOR.lock().free(), 32);
 
     // allocating one big object fails, although there is theoretically enough memory available
     let _e = Box::try_new_in([5_u8; 32], &ALLOCATOR).unwrap_err();
@@ -35,5 +35,4 @@ pub fn init_heap() {
         let heap_size = HEAP.len();
         ALLOCATOR.lock().init(heap_start, heap_size);
     };
-    println!("Initialized heap!");
 }
