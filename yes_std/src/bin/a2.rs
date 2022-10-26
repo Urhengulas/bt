@@ -12,10 +12,12 @@ struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        println!("allocate");
         Ok(unsafe { GLOBAL_PTR.get(layout) })
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        println!("deallocate");
         Global.deallocate(ptr, layout)
     }
 }

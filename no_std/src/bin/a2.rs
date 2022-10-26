@@ -5,12 +5,13 @@
 
 extern crate alloc;
 
-use core::ptr::NonNull;
-
 use alloc::{
-    alloc::{AllocError, Allocator, Layout},
+    alloc::{AllocError, Allocator, Global, Layout},
     vec::Vec,
 };
+use core::ptr::NonNull;
+
+use defmt::println;
 use linked_list_allocator::LockedHeap;
 use no_std as _; // global logger + panicking-behavior + memory layout
 
@@ -24,12 +25,13 @@ struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        println!("allocate");
         Ok(unsafe { GLOBAL_PTR.get(layout) })
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        // if deallocation is omitted the example just runs through without any complaints
-        ALLOCATOR.deallocate(ptr, layout)
+        println!("deallocate");
+        Global.deallocate(ptr, layout)
     }
 }
 
@@ -51,19 +53,37 @@ impl GlobalPtr {
     }
 }
 
+fn not_main() {
+    // allocate vector and push some elements, all looks nice so far
+    // NOTE: uses with_capacity to avoid reallocation
+    let mut a = Vec::with_capacity_in(6, &MY_ALLOC);
+    for i in 0..6 {
+        a.push(i);
+    }
+    println!("a: {:?}", a.as_slice());
+    separator();
+
+    // allocate another vector and push some elements
+    // this overwrites the earlier vector
+    let mut b = Vec::with_capacity_in(3, &MY_ALLOC);
+    for i in 0..3 {
+        b.push(i * 10);
+    }
+    assert_eq!(a.as_ptr(), b.as_ptr());
+    println!("a: {:?}\nb: {:?}", a.as_slice(), b.as_slice());
+    separator();
+
+    // push more elements in second vector to force reallocation
+    for i in 0..3 {
+        b.push(i * 100);
+    }
+    println!("a: {:?}\nb: {:?}", a.as_slice(), b.as_slice());
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     init_heap();
-
-    let mut a = Vec::with_capacity_in(5, &MY_ALLOC);
-    defmt::dbg!(a.as_slice());
-    for i in 0..20 {
-        a.push(i);
-        defmt::dbg!(a.as_slice());
-    }
-
-    defmt::println!("{}", a.as_slice());
-
+    not_main();
     no_std::exit()
 }
 
@@ -73,4 +93,8 @@ pub fn init_heap() {
         let heap_size = HEAP.len();
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
+}
+
+fn separator() {
+    println!("{}", "-".repeat(70).as_str());
 }
