@@ -4,6 +4,7 @@
 use std::{
     alloc::{AllocError, Allocator, Global, Layout},
     ptr::NonNull,
+    slice,
 };
 
 static MY_ALLOC: MyAllocator = MyAllocator;
@@ -12,11 +13,10 @@ struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let layout =
-            unsafe { Layout::from_size_align_unchecked(layout.size(), layout.align() - 1) };
         let ptr = Global.allocate(layout).unwrap();
-        dbg!(layout, ptr.to_raw_parts());
-        Ok(ptr)
+        let ptr =
+            unsafe { slice::from_raw_parts_mut(ptr.as_ptr().cast::<u8>().offset(1), ptr.len()) };
+        Ok(NonNull::new(ptr as *mut _).unwrap())
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {

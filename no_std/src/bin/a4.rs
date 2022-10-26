@@ -7,10 +7,11 @@
 extern crate alloc;
 
 use alloc::{
-    alloc::{AllocError, Allocator, Layout},
+    alloc::{AllocError, Allocator, Global, Layout},
     vec::Vec,
 };
 use core::{
+    alloc::LayoutError,
     ptr::{self, NonNull},
     slice,
 };
@@ -28,38 +29,39 @@ struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let layout =
-            unsafe { Layout::from_size_align_unchecked(layout.size(), layout.align() - 1) };
-        let ptr = ALLOCATOR.allocate(layout).unwrap();
-        dbg!(layout, ptr.to_raw_parts());
-        Ok(ptr)
+        let ptr = Global.allocate(layout).unwrap();
+        let ptr =
+            unsafe { slice::from_raw_parts_mut(ptr.as_ptr().cast::<u8>().offset(1), ptr.len()) };
+        Ok(NonNull::new(ptr as *mut _).unwrap())
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        ALLOCATOR.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
     init_heap();
+    not_main();
+    no_std::exit()
+}
 
+fn not_main() {
     let mut a = Vec::new_in(&MY_ALLOC);
     for i in 0..5 {
         a.push(i);
     }
-    dbg!(&a, a.as_ptr());
+    dbg!(&a.as_slice(), a.as_ptr());
 
     let mut b = Vec::new_in(&MY_ALLOC);
     for i in 0..5 {
         b.push(i);
     }
-    dbg!(&b, b.as_ptr());
-
-    no_std::exit()
+    dbg!(&b.as_slice(), b.as_ptr());
 }
 
-pub fn init_heap() {
+fn init_heap() {
     unsafe {
         let heap_start = HEAP.as_mut_ptr();
         let heap_size = HEAP.len();
