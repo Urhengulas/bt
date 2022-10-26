@@ -1,7 +1,7 @@
 #![feature(allocator_api)]
 
 use std::{
-    alloc::{AllocError, Allocator, Layout, System},
+    alloc::{AllocError, Allocator, Global, Layout},
     fmt::Debug,
     ptr::NonNull,
     thread,
@@ -17,13 +17,13 @@ unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         thread::sleep(DUR);
         println!("Allocate!");
-        System.allocate(layout)
+        Global.allocate(layout)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         thread::sleep(DUR);
         println!("Deallocate!");
-        System.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 

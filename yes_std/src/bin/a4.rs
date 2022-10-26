@@ -2,7 +2,7 @@
 #![feature(ptr_metadata)]
 
 use std::{
-    alloc::{AllocError, Allocator, Layout, System},
+    alloc::{AllocError, Allocator, Global, Layout},
     ptr::NonNull,
 };
 
@@ -14,13 +14,13 @@ unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let layout =
             unsafe { Layout::from_size_align_unchecked(layout.size(), layout.align() - 1) };
-        let ptr = System.allocate(layout).unwrap();
+        let ptr = Global.allocate(layout).unwrap();
         dbg!(layout, ptr.to_raw_parts());
         Ok(ptr)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        System.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 

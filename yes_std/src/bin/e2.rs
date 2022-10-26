@@ -1,7 +1,7 @@
 #![feature(allocator_api)]
 
 use std::{
-    alloc::{Allocator, Layout, System},
+    alloc::{Allocator, Global, Layout},
     mem,
     ptr::NonNull,
 };
@@ -17,7 +17,7 @@ fn main() {
     let ptr = a.as_mut_ptr().cast();
     let layout = Layout::array::<Dropper>(a.capacity()).unwrap();
     unsafe {
-        System.deallocate(NonNull::new(ptr).unwrap(), layout);
+        Global.deallocate(NonNull::new(ptr).unwrap(), layout);
     }
 
     // access memory after deallocation; gives garbage values

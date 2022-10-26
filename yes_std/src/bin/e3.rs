@@ -1,7 +1,7 @@
 #![feature(allocator_api)]
 
 use std::{
-    alloc::{AllocError, Allocator, Layout, System},
+    alloc::{AllocError, Allocator, Global, Layout},
     ptr::NonNull,
 };
 
@@ -11,13 +11,13 @@ struct MyAllocator;
 
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let ptr = System.allocate(layout).unwrap();
-        unsafe { System.deallocate(ptr.cast(), layout) };
+        let ptr = Global.allocate(layout).unwrap();
+        unsafe { Global.deallocate(ptr.cast(), layout) };
         Ok(ptr)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        System.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 

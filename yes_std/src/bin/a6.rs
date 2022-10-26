@@ -1,7 +1,7 @@
 #![feature(allocator_api)]
 
 use std::{
-    alloc::{AllocError, Allocator, Layout, System},
+    alloc::{AllocError, Allocator, Global, Layout},
     ops::Range,
     ptr::NonNull,
     slice,
@@ -14,7 +14,7 @@ struct MyAllocator;
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         println!("allocate");
-        let ptr = System.allocate(layout).unwrap();
+        let ptr = Global.allocate(layout).unwrap();
         let b = unsafe { ptr.as_ptr().cast::<u8>().offset(-30) };
         let c = unsafe { slice::from_raw_parts_mut(b, ptr.len()) };
         let a = unsafe { NonNull::new_unchecked(c) };
@@ -23,12 +23,12 @@ unsafe impl Allocator for MyAllocator {
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         println!("deallocate");
-        System.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 
 fn main() {
-    let mut a = Vec::with_capacity_in(3, &System);
+    let mut a = Vec::with_capacity_in(3, &Global);
     (0..3).for_each(|i| a.push(i));
     let a_ptr_range = a.as_ptr_range();
     dbg!(&a, &a_ptr_range);
@@ -37,7 +37,7 @@ fn main() {
     (0..3).for_each(|i| b.push(i * 2));
     let b_ptr_range = b.as_ptr_range();
     dbg!(&b, &b_ptr_range);
-    
+
     dbg!(&a);
 
     assert!(!overlaps(a_ptr_range, b_ptr_range), "should not overlap");

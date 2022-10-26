@@ -1,7 +1,7 @@
 #![feature(allocator_api)]
 
 use std::{
-    alloc::{AllocError, Allocator, Layout, System},
+    alloc::{AllocError, Allocator, Global, Layout},
     ptr::NonNull,
 };
 
@@ -16,7 +16,7 @@ unsafe impl Allocator for MyAllocator {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        System.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 
@@ -31,7 +31,7 @@ impl GlobalPtr {
 
     fn get(&mut self, layout: Layout) -> NonNull<[u8]> {
         if self.ptr.is_none() {
-            let ptr = System.allocate(layout).unwrap();
+            let ptr = Global.allocate(layout).unwrap();
             self.ptr = Some(ptr);
         }
         self.ptr.unwrap()

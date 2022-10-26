@@ -2,7 +2,7 @@
 
 use core::slice;
 use std::{
-    alloc::{AllocError, Allocator, Layout, System},
+    alloc::{AllocError, Allocator, Global, Layout},
     ptr::{self, NonNull},
 };
 
@@ -21,7 +21,7 @@ unsafe impl Allocator for MyAllocator {
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        System.deallocate(ptr, layout)
+        Global.deallocate(ptr, layout)
     }
 }
 
