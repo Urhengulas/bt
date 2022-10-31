@@ -13,7 +13,7 @@ use alloc::{
 };
 use core::ptr::NonNull;
 
-use defmt::println;
+use defmt::{println, write, Format};
 use linked_list_allocator::LockedHeap;
 use no_std as _; // global logger + panicking-behavior + memory layout
 
@@ -63,6 +63,12 @@ impl Drop for Dropper {
     }
 }
 
+impl Format for Dropper {
+    fn format(&self, fmt: defmt::Formatter) {
+        write!(fmt, "Dropper({})", self.0)
+    }
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     init_heap();
@@ -80,10 +86,7 @@ fn init_heap() {
 }
 
 fn print_a(a: &[Dropper]) {
-    println!(
-        "A: {:?}",
-        &a.iter().map(|x| x.0).collect::<Vec<_>>().as_slice(),
-    );
+    println!("A: {:?}", &a,);
 }
 
 fn print_b(b: &String) {

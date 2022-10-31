@@ -52,15 +52,6 @@ fn log(x: &[i32], name: &str) {
     println!("{}: {:?} (ptr={:?})", name, &x, x.as_ptr());
 }
 
-#[derive(Debug)]
-struct Dropper(u8);
-
-impl Drop for Dropper {
-    fn drop(&mut self) {
-        println!("Dropping {}", self.0);
-    }
-}
-
 #[cortex_m_rt::entry]
 fn main() -> ! {
     init_heap();
