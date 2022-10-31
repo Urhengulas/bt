@@ -62,7 +62,7 @@ fn notmain() {
     dbg!(&b.as_slice(), b.as_ptr());
 }
 
-pub fn init_heap() {
+fn init_heap() {
     unsafe {
         let heap_start = HEAP.as_mut_ptr();
         let heap_size = HEAP.len();

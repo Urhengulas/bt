@@ -55,7 +55,7 @@ fn main() -> ! {
     no_std::exit()
 }
 
-pub fn init_heap() {
+fn init_heap() {
     unsafe {
         let heap_start = HEAP.as_mut_ptr();
         let heap_size = HEAP.len();
