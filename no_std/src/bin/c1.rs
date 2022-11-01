@@ -6,22 +6,84 @@
 
 extern crate alloc;
 
-use alloc::{
-    alloc::{AllocError, Allocator, Global, Layout},
-    vec::Vec,
-};
+use alloc::alloc::{Allocator, Global, Layout};
 use core::{
-    alloc::GlobalAlloc,
+    fmt,
     ptr::{self, NonNull},
     slice,
 };
 
-use defmt::{dbg, println};
+use defmt::{println, Debug2Format, Display2Format};
+use linked_list_allocator::LockedHeap;
 use no_std as _; // global logger + panicking-behavior + memory layout
 
-static mut MEMORY: [u8; 300] = [0; 300];
 #[global_allocator]
-static ALLOC: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+static GLOBAL_ALLOC: LockedHeap = LockedHeap::empty();
+static mut HEAP_1: [u8; 1024] = [0; 1024];
+
+#[derive(Debug)]
+struct LeakyVec<T, A: Allocator> {
+    alloc: A,
+    _cap: usize,
+    len: usize,
+    ptr: NonNull<T>,
+}
+
+impl<T, A: Allocator> LeakyVec<T, A> {
+    fn with_capacity_in(cap: usize, alloc: A) -> Self {
+        let ptr = alloc.allocate(Layout::array::<T>(cap).unwrap()).unwrap();
+        Self {
+            alloc,
+            _cap: cap,
+            len: 0,
+            ptr: ptr.cast(),
+        }
+    }
+
+    fn push(&mut self, value: T) {
+        // NOTE: does _not_ grow capacity, since this is not needed for the experiment
+
+        unsafe {
+            let end = self.ptr.as_ptr().add(self.len);
+            ptr::write(end, value);
+            self.len += 1;
+        }
+    }
+}
+
+impl<T: fmt::Debug, A: Allocator> fmt::Display for LeakyVec<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let a = unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) };
+        f.debug_list().entries(a.iter()).finish()
+    }
+}
+
+impl<T, A: Allocator> Drop for LeakyVec<T, A> {
+    fn drop(&mut self) {
+        // drop values
+        unsafe { ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.ptr.as_ptr(), self.len)) };
+
+        // deallocate memory
+        let n = self.len; // BUG: should use `self.cap` instead of `self.len`
+        let layout = Layout::array::<T>(n).unwrap();
+        unsafe { self.alloc.deallocate(self.ptr.cast(), layout) }
+        println!("Deallocate {} bytes!", n);
+    }
+}
+
+fn notmain() {
+    let before = GLOBAL_ALLOC.lock().free();
+
+    let mut leak = LeakyVec::<u32, _>::with_capacity_in(10, &Global);
+    for i in 0..5 {
+        leak.push(i * i);
+    }
+    println!("{:?} = {}", Debug2Format(&leak), Display2Format(&leak));
+    drop(leak);
+
+    let after = GLOBAL_ALLOC.lock().free();
+    assert_eq!(before, after);
+}
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -30,122 +92,7 @@ fn main() -> ! {
     no_std::exit()
 }
 
-fn notmain() {
-    let mut a = Vec::new_in(&ALLOC);
-    for i in 0.. {
-        a.push(i);
-    }
-}
-
 fn init_heap() {
-    unsafe {
-        let mut allocator = ALLOC.lock();
-        allocator.init(MEMORY.as_ptr() as usize, MEMORY.len());
-    }
-
+    unsafe { GLOBAL_ALLOC.lock().init(HEAP_1.as_mut_ptr(), HEAP_1.len()) };
     println!("Initialized heap!");
-}
-
-#[derive(Debug)]
-pub struct BumpAllocator {
-    heap_start: usize,
-    heap_end: usize,
-    next: usize,
-    allocations: usize,
-}
-
-impl BumpAllocator {
-    /// Creates a new empty bump allocator.
-    pub const fn new() -> Self {
-        BumpAllocator {
-            heap_start: 0,
-            heap_end: 0,
-            next: 0,
-            allocations: 0,
-        }
-    }
-
-    /// Initializes the bump allocator with the given heap bounds.
-    ///
-    /// This method is unsafe because the caller must ensure that the given
-    /// memory range is unused. Also, this method must be called only once.
-    pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
-        self.heap_start = heap_start;
-        self.heap_end = heap_start + heap_size;
-        self.next = heap_start;
-
-        dbg!(self);
-    }
-}
-
-/// A wrapper around spin::Mutex to permit trait implementations.
-#[derive(Debug)]
-pub struct Locked<T> {
-    inner: spin::Mutex<T>,
-}
-
-impl<T> Locked<T> {
-    pub const fn new(inner: T) -> Self {
-        Locked {
-            inner: spin::Mutex::new(inner),
-        }
-    }
-
-    pub fn lock(&self) -> spin::MutexGuard<T> {
-        self.inner.lock()
-    }
-}
-
-unsafe impl Allocator for Locked<BumpAllocator> {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let mut bump = self.lock(); // get a mutable reference
-
-        let alloc_start = align_up(bump.next, layout.align());
-        let alloc_end = match alloc_start.checked_add(layout.size()) {
-            Some(end) => end,
-            None => return Err(AllocError),
-        };
-
-        if alloc_end > bump.heap_end {
-            Err(AllocError)
-        } else {
-            bump.next = alloc_end;
-            bump.allocations += 1;
-            let ptr = unsafe {
-                slice::from_raw_parts_mut(alloc_start as *mut u8, layout.size()) as *mut _
-            };
-            println!("allocate:   ptr={:?}, layout={:?}", ptr, layout);
-            dbg!(&bump);
-            Ok(NonNull::new(ptr).unwrap())
-        }
-    }
-
-    unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {
-        let mut bump = self.lock(); // get a mutable reference
-
-        bump.allocations -= 1;
-        if bump.allocations == 0 {
-            println!("reset!");
-            bump.next = bump.heap_start;
-        }
-
-        println!("deallocate: ptr={:?}, layout={:?}", _ptr.as_ptr(), _layout);
-    }
-}
-
-unsafe impl GlobalAlloc for Locked<BumpAllocator> {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.allocate(layout).unwrap().as_ptr().cast()
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.deallocate(NonNull::new(ptr).unwrap(), layout);
-    }
-}
-
-/// Align the given address `addr` upwards to alignment `align`.
-///
-/// Requires that `align` is a power of two.
-fn align_up(addr: usize, align: usize) -> usize {
-    (addr + align - 1) & !(align - 1)
 }
