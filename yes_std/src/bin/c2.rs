@@ -1,11 +1,9 @@
 #![feature(allocator_api)]
 
-use std::mem;
-
 fn main() {
-    let a = vec![1, 2, 3, 4, 5];
-    mem::forget(a);
+    let a = Box::new(42);
+    Box::leak(a);
 
-    let b = Box::new(5);
-    Box::leak(b);
+    let b = Box::new([0, 1, 2, 3, 4]);
+    core::mem::forget(b);
 }
