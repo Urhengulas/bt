@@ -10,11 +10,7 @@ use alloc::{
     alloc::{AllocError, Allocator, Global, Layout},
     vec::Vec,
 };
-use core::{
-    alloc::LayoutError,
-    ptr::{self, NonNull},
-    slice,
-};
+use core::{ptr::NonNull, slice};
 
 use defmt::{dbg, println};
 use linked_list_allocator::LockedHeap;

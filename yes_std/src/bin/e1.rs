@@ -2,7 +2,6 @@
 
 use std::{
     alloc::{Allocator, Global, Layout},
-    mem,
     ptr::NonNull,
 };
 
