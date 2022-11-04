@@ -3,21 +3,18 @@ const KB: usize = 1024;
 fn main() {
     let mut a = Vec::new();
     loop {
-        push_one_mb(&mut a);
-        println!("{} MB", a.len() / 1024)
+        push_one_kb(&mut a);
     }
 }
 
-fn push_one_mb(a: &mut Vec<[u32; KB]>) {
-    match a.try_reserve_exact(1024 * KB) {
+fn push_one_kb(a: &mut Vec<[u8; KB]>) {
+    match a.try_reserve_exact(1) {
         Ok(_) => {
-            for _ in 0..(1024) {
-                a.push([0; KB]);
-            }
+            a.push([0; KB]);
         }
         Err(e) => {
-            dbg!(e);
-            println!("Heap memory full. Handle it gracefully.");
+            println!("AllocationError: {}.", e);
+            println!("Handle allocation error gracefully.");
             std::process::exit(0);
         }
     }
