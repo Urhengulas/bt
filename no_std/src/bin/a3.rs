@@ -26,9 +26,10 @@ struct MyAllocator;
 unsafe impl Allocator for MyAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = Global.allocate(layout).unwrap();
-        let ptr =
-            unsafe { slice::from_raw_parts_mut(ptr.as_ptr().cast::<u8>().offset(1), ptr.len()) };
-        Ok(NonNull::new(ptr as *mut _).unwrap())
+        let ptr = unsafe {
+            slice::from_raw_parts_mut(ptr.as_ptr().cast::<u8>().offset(1), ptr.len()) as *mut _
+        };
+        Ok(NonNull::new(ptr).unwrap())
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
