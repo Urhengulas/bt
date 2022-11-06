@@ -1,5 +1,3 @@
-#![feature(allocator_api)]
-
 fn main() {
     let a = Box::new(42);
     Box::leak(a);
