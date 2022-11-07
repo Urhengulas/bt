@@ -29,32 +29,27 @@ fn init_heap() {
 // -------------------------------------------
 
 use alloc::rc::Rc;
-use core::cell::RefCell;
+use core::{cell::RefCell, ops::Deref};
 
 #[derive(Debug)]
 enum List {
-    Cons(RefCell<Rc<Self>>),
+    Cons(i32, RefCell<Rc<Self>>),
     Nil,
 }
 
 impl List {
-    fn cons(list: Rc<Self>) -> Rc<Self> {
-        Rc::new(Self::Cons(RefCell::new(list)))
-    }
-
-    fn tail(&self) -> Option<&RefCell<Rc<Self>>> {
-        match self {
-            Self::Cons(item) => Some(item),
-            Self::Nil => None,
-        }
+    fn cons(n: i32, list: Rc<Self>) -> Rc<Self> {
+        Rc::new(Self::Cons(n, RefCell::new(list)))
     }
 }
 
 fn notmain() {
-    let a = List::cons(Rc::new(List::Nil));
-    let b = List::cons(Rc::clone(&a));
-    if let Some(link) = a.tail() {
-        *link.borrow_mut() = Rc::clone(&b);
+    let a = List::cons(1, Rc::new(List::Nil));
+    let b = List::cons(2, Rc::clone(&a));
+
+    match a.deref() {
+        List::Cons(_, c) => *c.borrow_mut() = Rc::clone(&b),
+        List::Nil => (),
     }
 
     println!(
@@ -63,5 +58,6 @@ fn notmain() {
         Rc::strong_count(&b)
     );
 
-    println!("a next item = {:?}", Debug2Format(&a.tail()));
+    // WARN: the next line creates a stack overflow
+    println!("{:?}", Debug2Format(&a));
 }
