@@ -21,7 +21,6 @@ defmt-rtt = "0.4"
 linked_list_allocator = { version = "0.10", features = ["alloc_ref"] }
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 nrf52840-hal = "0.15"
-spin = "0.9.4"
 
 [dev-dependencies]
 defmt-test = "0.3"
