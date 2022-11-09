@@ -44,20 +44,27 @@ impl List {
 }
 
 fn notmain() {
-    let a = List::cons(1, Rc::new(List::Nil));
-    let b = List::cons(2, Rc::clone(&a));
+    let before = GLOBAL_ALLOC.lock().free();
 
-    match a.deref() {
-        List::Cons(_, c) => *c.borrow_mut() = Rc::clone(&b),
-        List::Nil => (),
+    {
+        let a = List::cons(1, Rc::new(List::Nil));
+        let b = List::cons(2, Rc::clone(&a));
+
+        match a.deref() {
+            List::Cons(_, c) => *c.borrow_mut() = Rc::clone(&b),
+            List::Nil => (),
+        }
+
+        println!(
+            "rc count: a={}, b={}",
+            Rc::strong_count(&a),
+            Rc::strong_count(&b)
+        );
+
+        // WARN: the next line creates a stack overflow
+        println!("{:?}", Debug2Format(&a));
     }
 
-    println!(
-        "rc count: a={}, b={}",
-        Rc::strong_count(&a),
-        Rc::strong_count(&b)
-    );
-
-    // WARN: the next line creates a stack overflow
-    println!("{:?}", Debug2Format(&a));
+    let after = GLOBAL_ALLOC.lock().free();
+    assert_eq!(before, after, "should panic because of the memory leak");
 }
